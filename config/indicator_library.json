@@ -1,0 +1,57 @@
+{
+  "rsi_above_60": {
+    "desc": "RSI>60 偏强",
+    "weight_range": [
+      5,
+      20
+    ],
+    "direction": "positive",
+    "hit_rate": 0.223,
+    "lift": 0.008,
+    "added_at": "2026-03-30T18:10:17.352770"
+  },
+  "close_above_ma20_pct": {
+    "desc": "收盘价在MA20上方3%以上",
+    "weight_range": [
+      5,
+      25
+    ],
+    "direction": "positive",
+    "hit_rate": 0.242,
+    "lift": 0.086,
+    "added_at": "2026-03-30T18:10:17.352774"
+  },
+  "rsi_50_60_zone": {
+    "desc": "RSI在50-60动量区间",
+    "weight_range": [
+      3,
+      15
+    ],
+    "direction": "positive",
+    "hit_rate": 0.249,
+    "lift": 0.033,
+    "added_at": "2026-03-30T18:10:17.352775"
+  },
+  "negative_change": {
+    "desc": "当日下跌",
+    "weight_range": [
+      -15,
+      -3
+    ],
+    "direction": "negative",
+    "hit_rate": 0.224,
+    "lift": 0.004,
+    "added_at": "2026-03-30T18:10:17.352776"
+  },
+  "score_high": {
+    "desc": "原始综合评分高（>65）",
+    "weight_range": [
+      8,
+      30
+    ],
+    "direction": "positive",
+    "hit_rate": 0.231,
+    "lift": 0.07,
+    "added_at": "2026-03-30T18:10:17.352777"
+  }
+}

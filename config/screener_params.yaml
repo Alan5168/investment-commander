@@ -1,0 +1,34 @@
+# 选股参数配置
+# 核心定位：量化腿筛出20-30只技术面合格的候选池
+# 题材支撑+技术面 → 真正值得买入的标的
+
+market_filter:
+  # 大盘过滤规则（方案B）
+  crash_threshold_1d: -0.03  # 昨日大盘跌>3% → 空仓
+  crash_threshold_5d: -0.05  # 近5日大盘跌>5% → 空仓
+  min_candidates: 10         # 候选数<10只 → 空仓
+
+candidate_pool:
+  # 候选池大小（扩大到20-30只）
+  target_size: 25
+  min_size: 15
+  max_size: 30
+  
+  # 分层输出
+  tiers:
+    strong: 8      # 强势候选（技术面最强）
+    normal: 12     # 普通候选（技术面合格）
+    watchlist: 5   # 观察候选（等待确认）
+
+technical_filters:
+  # 技术面筛选条件
+  volume_ratio_min: 1.2      # 量比≥1.2
+  rsi_low: 35                # RSI低位回升
+  zj_saturation_max: 85      # 主力饱和度上限
+  ma_bullish: true           # MA多头排列
+
+output:
+  # 输出格式
+  format: "markdown"
+  include_disclaimer: true
+  disclaimer: "⚠️ 以下仅为技术面筛选结果，有题材支撑的标的才具备投资价值"

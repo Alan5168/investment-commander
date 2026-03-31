@@ -1,0 +1,45 @@
+# 量化模块优化目标配置
+# 量化模块定位：过滤器，不是独立策略
+# 目标不是最高夏普，而是"比随机选股好"
+
+baseline:
+  random_win_rate: 0.277  # 大盘随机胜率（已验证）
+
+targets:
+  # 核心目标（必须超越随机）
+  win_rate_vs_random: "+8%"  # 胜率比随机高8个百分点
+  win_rate_absolute: 0.35  # 绝对胜率至少35%
+
+  # 候选池质量
+  candidate_count_min: 15  # 至少15只
+  candidate_count_max: 25  # 最多25只
+
+  # 风控底线
+  max_drawdown: 0.25  # 回撤不超25%（加过滤后）
+
+  # 夏普不作为主要目标
+  # 因为大量空仓会人为拉高夏普，没有意义
+
+benchmarks:
+  随机选股: 0.277  # 基准线
+  我们的目标: 0.35  # 绝对胜率目标
+
+optimization:
+  # 优化参数范围
+  param_ranges:
+    volume_ratio_min: [1.0, 2.5]
+    rsi_low: [25, 50]
+    ma_cross_sensitivity: [0.95, 1.05]  # 新增：MA穿越灵敏度
+    zj_saturation_max: [70, 95]
+    accuracy_threshold: [2.0, 5.0]
+
+  # 变异配置
+  mutation_rate: 0.2
+  mutation_strength_normal: 0.15
+  mutation_strength_aggressive: 0.3  # 无改善>10代后扩大变异
+
+  # 早停条件
+  stop_conditions:
+    win_rate_below: 0.25  # 低于随机水平25%就停
+    max_drawdown_above: 0.30  # 回撤超30%就停
+    no_improvement_gens: 20  # 连续20代无改善停止
