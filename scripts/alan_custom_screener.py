@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# 评分阈值：tier1≥88 / tier2≥75 / tier3≥60
+# 成交额过滤：≥1亿/日
+# 最优指标（5个）：price_down / ma5_gt_ma10 / close_gt_ma5 / close_above_ma20_pct / rsi_50_60_zone
+# 来源：遗传算法探索38代，composite_score=17.09，高区胜率25.9%
+# 更新时间：2026-03-31
 """
 Alan Li 定制化选股脚本 v2.1 - 统一数据源版
 
