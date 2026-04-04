@@ -1,6 +1,8 @@
 # Investment Commander（投资团队编排器）
 
 > 🤖 产业逻辑（70%）+ 量化择时（30%）= 每日 3 只精选推荐
+>
+> 📍 **定位**：全球新兴题材发现 × A股/港股落地验证，适用于关注中美科技趋势的个人投资者。
 > 不做决策，只做调度 —— 让专业的人做专业的事
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
@@ -10,7 +12,7 @@
 
 ## 一句话说明
 
-Investment Commander 是**A股投资决策系统的编排层**，通过多 Agent 协作——产业分析师 × 量化择时官 × 风控验证员——每日输出 3 只精选股票，并给出精确的买卖点位与操作清单。
+Investment Commander 是**全球题材发现 × A股落地验证**的投资决策系统，通过多 Agent 协作——产业分析师 × 量化择时官 × 风控验证员——每日输出 3 只精选股票，并给出精确的买卖点位与操作清单。
 
 **使用方式**：在钉钉或 Telegram 对我说"今日选股"，90 秒内收到报告。
 
@@ -124,6 +126,13 @@ investment-commander/
 ---
 
 ## 版本历史
+
+### v1.3.1 (2026-04-04)
+- 新增热点题材追踪器：hot_sector_tracker.py（akshare涨停板 + last30days全球新兴题材）
+- 早报新增「热点题材」模块：A股涨停验证 + last30days Reddit全球趋势交叉
+- hot_sectors_cache.json 缓存，供 commander_final.py 读取推荐催化剂
+- 美股数据改用 Yahoo Finance（绕过 akshare 稳定性问题）
+- README 更新定位说明：全球题材发现 × A股落地验证
 
 ### v1.3 (2026-04-04)
 - 持仓股产业背景自动注入：portfolio.json → STOCK_CATALYST_MAP → 早报/推荐自动带产业说明

@@ -30,58 +30,73 @@ from market_filter import get_market_state, get_market_regime
 from catalyst_filter import get_stock_industry_context
 
 
-def get_us_overnight() -> str:
-    """美股隔夜情况"""
-    if not AKSHARE_AVAILABLE:
-        return "🌍 美股数据: akshare 未安装"
-    
+def _yahoo_quote(ticker: str, days: int = 7) -> list:
+    """Yahoo Finance 获取美股行情"""
+    import urllib.request, json
+    from datetime import datetime
     try:
-        lines = ["🌍 美股隔夜"]
-        
-        # 美股主要ETF
-        etfs = [
-            ("QQQ", "纳指100"),
-            ("SPY", "标普500"),
-            ("YANG", "做空中国3X")
-        ]
-        
-        yang_chg = None
-        any_success = False
-        
-        for symbol, name in etfs:
-            try:
-                df = ak.stock_us_daily(symbol=symbol, adjust="qfq")
-                if df is None or len(df) < 2:
-                    continue
-                
-                df = df.sort_values("date").tail(2)
-                chg = (df.iloc[-1]["close"] - df.iloc[-2]["close"]) / df.iloc[-2]["close"] * 100
-                
-                if symbol == "YANG":
-                    yang_chg = chg
-                
-                emoji = "🔴" if chg < -1 else "🟢" if chg > 1 else "⚪"
-                lines.append(f"  {emoji} {name}: {chg:+.2f}%")
-                any_success = True
-            except Exception as e:
-                lines.append(f"  ⚠️ {name}: 获取失败")
-        
-        # YANG 信号解读
-        if yang_chg is not None:
-            if yang_chg > 5:
-                lines.append("  🚨 YANG暴涨超5%，强烈建议减仓观望")
-            elif yang_chg > 3:
-                lines.append("  ⚠️ YANG大涨超3%，今日A股注意回避风险")
-            elif yang_chg < -3:
-                lines.append("  ✅ YANG大跌超3%，今日A股可能偏强")
-        
-        if not any_success:
-            lines.append("  美股数据获取失败，请检查网络或akshare版本")
-        
-        return "\n".join(lines)
-    except Exception as e:
-        return f"🌍 美股数据获取失败: {e}"
+        url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+               f"?interval=1d&range={days}d")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+        result = data["chart"]["result"][0]
+        closes = result["indicators"]["quote"][0]["close"]
+        ts = result["timestamp"]
+        dates = [datetime.fromtimestamp(t).strftime("%m-%d") for t in ts]
+        return [(d, c) for d, c in zip(dates, closes) if c is not None]
+    except:
+        return None
 
+
+def get_us_overnight() -> str:
+    lines = ["🌍 美股隔夜(Yahoo Finance)"]
+
+    tickers = [
+        ("YANG", "做空中国3X"),
+        ("^IXIC", "线指4X100"),
+        ("SPY", "标普500"),
+    ]
+
+    yang_data = None
+    any_ok = False
+
+    for ticker, name in tickers:
+        data = _yahoo_quote(ticker, days=7)
+        if not data or len(data) < 2:
+            lines.append(f"  ⚠️ {name}: 获取失败")
+            continue
+
+        chg = (data[-1][1] - data[-2][1]) / data[-2][1] * 100
+        emoji = "🔴" if chg < -1 else "🟢" if chg > 1 else "⚪"
+        lines.append(f"  {emoji} {name}: {chg:+.2f}%  {data[-1][0]}收${data[-1][1]:.2f}")
+        any_ok = True
+
+        if ticker == "YANG":
+            yang_data = data
+
+    if yang_data and len(yang_data) >= 5:
+        yang_5d_pct = (yang_data[-1][1] - yang_data[0][1]) / yang_data[0][1] * 100
+        yang_1d_pct = (yang_data[-1][1] - yang_data[-2][1]) / yang_data[-2][1] * 100
+
+        if yang_1d_pct > 5:
+            lines.append("  🚨 YANG昨夜暴涨>5%  A股建议空仓/减仓")
+        elif yang_1d_pct > 2:
+            lines.append("  ⚠️ YANG昨夜涨>2%  短期情绪偏空注意风险")
+        elif yang_1d_pct > 0:
+            lines.append("  ⚠️ YANG昨夜小涨  中国压力仍在轻仓观望")
+        else:
+            lines.append("  ✅ YANG昨夜下跌  中国压力缓解A股情绪回暖")
+
+        if yang_5d_pct > 5:
+            lines.append(f"  📉 YANG近5日持续上涨+{yang_5d_pct:.1f}%  中国压力累积")
+        elif yang_5d_pct < -5:
+            lines.append(f"  📈 YANG近5日持续下跌{yang_5d_pct:.1f}%  中国压力缓解")
+
+    if not any_ok:
+        lines.append("  ⚠️ 美股数据全部获取失败")
+
+    return "\n".join(lines)
 
 def get_market_state_report() -> str:
     """大盘状态判断"""
@@ -350,49 +365,103 @@ def get_last30days_briefing() -> str:
         return ""
 
 def get_portfolio_status() -> str:
-    """持仓状态快速检查"""
+    from catalyst_filter import get_stock_industry_context
+    from stock_client import get_daily
+    portfolio_file = Path("/Users/alanli/.openclaw/workspace/data/portfolio.json")
+    if not portfolio_file.exists():
+        return ""
+
     try:
-        from stock_client import get_daily
-        
-        portfolio_file = Path('/Users/alanli/.openclaw/workspace/data/portfolio.json')
-        if not portfolio_file.exists():
-            return ""
-        
         portfolio = json.loads(portfolio_file.read_text())
         holdings = portfolio.get("holdings", [])
-        
         if not holdings:
             return ""
-        
-        lines = ["💼 持仓概览"]
-        
-        for h in holdings[:5]:  # 最多显示5只
+
+        updated = portfolio.get("updated_at", "未知")
+        total_val = portfolio.get("total_market_value", 0)
+        total_pnl = portfolio.get("total_pnl", 0)
+        pnl_emoji = "🔴" if total_pnl < 0 else "🟢"
+        lines = [
+            f"💰 持仓概览  (数据更新:{updated})",
+            f"   全部{len(holdings)}只  总市值${total_val:,.0f}  {pnl_emoji}总损益${total_pnl:+,.0f}",
+            ""
+        ]
+
+        loss_list = []
+        gain_list = []
+
+        for h in holdings:
             code = h.get("code", "").split(".")[0]
             name = h.get("name", code)
-            industry = get_stock_industry_context(code)
             cost = h.get("cost", 0)
-            
-            if not cost:
+            current = h.get("current_price", 0)
+            pnl_pct = h.get("pnl_pct", 0)
+            pnl = h.get("pnl", 0)
+            industry = get_stock_industry_context(code)
+            ind_short = industry[:6] if industry not in ("待补充",) else ""
+
+            if not cost or not current:
                 continue
-            
-            try:
-                df = get_daily(code, days=2)
-                if df is not None and len(df) >= 1:
-                    current = df.iloc[-1]["收盘"]
-                    pnl_pct = (current - cost) / cost * 100
-                    emoji = "🔴" if pnl_pct < -5 else "🟡" if pnl_pct < 0 else "🟢"
-                    industry_short = industry[:8] if industry != '待补充' else ''
-                    ind_str = f' [{industry_short}]' if industry_short else ''
-                    lines.append(
-                        f"  {emoji} {name}{ind_str}: "
-                        f"现价{current:.2f} 成本{cost:.2f} "
-                        f"({pnl_pct:+.1f}%)"
-                    )
-            except:
-                pass
-        
+
+            emoji = "🔴" if pnl_pct < -5 else "🟡" if pnl_pct < 0 else "🟢"
+            direction = "亏" if pnl_pct < 0 else "盈"
+            entry = (abs(pnl_pct), emoji, name, ind_short, cost, current, pnl_pct, direction, abs(pnl))
+
+            if pnl_pct < 0:
+                loss_list.append(entry)
+            else:
+                gain_list.append(entry)
+
+        # 亏损先显示
+        lines.append("  --- 亏损持仓 ---")
+        for pct, emoji, name, ind, cost, current, pnl_pct, direction, pnl_abs in sorted(loss_list, reverse=True):
+            lines.append(f"  {emoji} {name} [{ind}] 成本${cost:.2f}现价${current:.2f}  {pnl_pct:+.1f}%({direction}${pnl_abs:,.0f})")
+
+        lines.append("")
+        lines.append("  --- 盈利持仓 ---")
+        for pct, emoji, name, ind, cost, current, pnl_pct, direction, pnl_abs in sorted(gain_list, reverse=True):
+            lines.append(f"  {emoji} {name} [{ind}] 成本${cost:.2f}现价${current:.2f}  {pnl_pct:+.1f}%({direction}${pnl_abs:,.0f})")
+
+        # 操作建议
+        if loss_list:
+            lines.append("")
+            lines.append("💡 亏损持仓操作建议:")
+            for pct, emoji, name, ind, cost, current, pnl_pct, direction, pnl_abs in sorted(loss_list, reverse=True):
+                if pct >= 10:
+                    lines.append(f"  🔄 云操作: 开始分批减仓，控制损失")
+                    lines.append(f"    {pct:.0f}%亏损已超止损线，评估是否认赔离场")
+                elif pct >= 5:
+                    lines.append(f"  👁 关注: 突破本重成本线时是否止损还是加仓")
+                else:
+                    lines.append(f"  🛑 持有: 短期浮动正常范围，无须操作")
+
         return "\n".join(lines)
     except Exception as e:
+        return ""
+
+# ============ last30days ============
+
+
+def get_hot_sectors_brief() -> str:
+    cache_file = Path('/Users/alanli/.openclaw/workspace/skills/a-stock-monitor/config/hot_sectors_cache.json')
+    if not cache_file.exists():
+        return ""
+    try:
+        data = json.loads(cache_file.read_text())
+        catalysts = data.get('top_catalysts', [])
+        zt = data.get('zt_sectors', {})
+        if not catalysts:
+            return ""
+        top_zt = list(zt.keys())[:3] if zt else []
+        lines = [
+            "",
+            "🔥 热点题材（A股涨停验证 + last30days全球趋势）",
+            f"  📈 A股涨停：{' / '.join(top_zt)}" if top_zt else "  📈 A股涨停：暂无数据",
+            f"  🌐 全球新兴：{' / '.join(catalysts[:3])}",
+            f"  🎯 推荐催化剂：{' / '.join(catalysts[:4])}",
+        ]
+        return '\n'.join(lines)
+    except:
         return ""
 
 
@@ -413,8 +482,9 @@ def generate_morning_briefing() -> str:
         get_medium_term_calendar(),
         "",
         get_long_term_tracking(),
+        get_hot_sectors_brief(),
     ]
-    
+
     portfolio = get_portfolio_status()
     if portfolio:
         sections.extend(["", portfolio])
