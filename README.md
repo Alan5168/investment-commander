@@ -3,6 +3,17 @@
 > 🤖 产业逻辑（70%）+ 量化择时（30%）= 每日 3 只精选推荐
 >
 > 📍 **定位**：全球新兴题材发现 × A股/港股落地验证，适用于关注中美科技趋势的个人投资者。
+
+### 快速启动（推荐方式）
+```bash
+# ClawTeam 多Agent协作（新版）
+clawteam launch investment-commander --goal "AI算力 芯片 商业航天" --team-name my-invest
+
+# 直接运行脚本（经典方式）
+python3 scripts/morning_briefing.py        # 完整早报（含热点题材）
+python3 scripts/commander_final.py        # 产业优先选股
+python3 scripts/hot_sector_tracker.py     # 热点题材分析
+```
 > 不做决策，只做调度 —— 让专业的人做专业的事
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
@@ -126,6 +137,15 @@ investment-commander/
 ---
 
 ## 版本历史
+
+### v2.0.0 (2026-04-04) — ClawTeam 集成
+- **ClawTeam 模板**：`clawteam/templates/investment-commander.toml`
+  - 5个 Agent 协作：Commander + 产业分析师 + 量化分析师 + 风控验证员 + 新闻情绪分析师
+  - 启动命令：`clawteam launch investment-commander --goal "AI算力 芯片"`
+- **热点题材追踪器**：`hot_sector_tracker.py`（akshare涨停板 + last30days全球新兴题材）
+- **早报增强**：新增「热点题材」模块，A股涨停验证 + last30days全球趋势交叉
+- **美股数据**：改用 Yahoo Finance（绕过 akshare 稳定性问题）
+- README 完整定位更新（见下方）
 
 ### v1.3.1 (2026-04-04)
 - 新增热点题材追踪器：hot_sector_tracker.py（akshare涨停板 + last30days全球新兴题材）

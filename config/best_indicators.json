@@ -16,7 +16,7 @@
   "random_baseline": 0.221,
   "updated_at": "2026-04-04T00:07:42.659051",
   "generation": 8,
-  "no_improve_count": 41,
+  "no_improve_count": 53,
   "restart_from": null,
   "note": "250代无改善后强重启，从头探索",
   "high_win": 0.281,
