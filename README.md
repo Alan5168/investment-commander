@@ -127,8 +127,8 @@ investment-commander/
 
 ### v1.3 (2026-04-04)
 - 持仓股产业背景自动注入：portfolio.json → STOCK_CATALYST_MAP → 早报/推荐自动带产业说明
-- 持仓排除逻辑：推荐时自动过滤已持仓股票（14只A股/港股）
-- 持仓产业亮点：12只持仓股独立产业描述（云路/海兴/铭利达/航锦/中科蓝讯等）
+- 持仓排除逻辑：推荐时自动过滤用户已持仓股票（需配置 portfolio.json）
+- 持仓产业亮点：支持持仓股独立产业描述（需在 portfolio.json 配置）
 - 量化指标升级：best_indicators v2（composite_score 17.09 → 19.31，高区胜率 28.1% vs 随机 22.1%）
 - 新增7个未来产业主题：脑机接口/低空经济/卫星互联网/生物制造/量子计算/核聚变/AI Agent
 - 产业分析师 v2：支持 get_stock_industry_context() 动态获取产业背景

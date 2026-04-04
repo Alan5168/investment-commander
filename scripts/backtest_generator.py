@@ -15,38 +15,29 @@ BASE_DIR = Path(__file__).parent.parent
 BACKTEST_DIR = BASE_DIR / 'output' / 'backtest'
 OUTPUT_FILE = BACKTEST_DIR / 'backtest_history.jsonl'
 
-# 模拟股票池
+# 示例股票池（请替换为用户自己的持仓或关注的股票）
+# 格式：{'code': '股票代码', 'name': '公司简称', 'sector': '所属产业'}
 STOCK_POOL = [
-    {'code': '688190', 'name': '云路先进材料', 'sector': '新材料'},
-    {'code': '603556', 'name': '海兴电力', 'sector': '电力设备'},
-    {'code': '688677', 'name': '青岛海泰新光', 'sector': '医疗器械'},
-    {'code': '000818', 'name': '航锦科技', 'sector': '化工'},
-    {'code': '301268', 'name': '铭利达', 'sector': '汽车零部件'},
-    {'code': '02018', 'name': '瑞声科技', 'sector': '消费电子'},
-    {'code': '688116', 'name': '天奈科技', 'sector': '新材料'},
-    {'code': '688262', 'name': '苏州国芯科技', 'sector': '芯片'},
-    {'code': '03888', 'name': '金山软件', 'sector': '软件'},
-    {'code': '300567', 'name': '精测电子', 'sector': '半导体设备'},
-    {'code': '688332', 'name': '中科蓝讯', 'sector': '芯片'},
-    {'code': '600745', 'name': '闻泰科技', 'sector': '半导体'},
-    {'code': '301269', 'name': '华大九天', 'sector': 'EDA软件'},
     {'code': '002371', 'name': '北方华创', 'sector': '半导体设备'},
     {'code': '688012', 'name': '中微公司', 'sector': '半导体设备'},
     {'code': '688072', 'name': '拓荆科技', 'sector': '半导体设备'},
     {'code': '688120', 'name': '华海清科', 'sector': '半导体设备'},
-    {'code': '688082', 'name': '盛美上海', 'sector': '半导体设备'},
-    {'code': '688037', 'name': '芯源微', 'sector': '半导体设备'},
-    {'code': '603690', 'name': '至纯科技', 'sector': '半导体设备'},
-    {'code': '600641', 'name': '万业企业', 'sector': '半导体设备'},
-    {'code': '688630', 'name': '云路股份', 'sector': '新材料'},
-    {'code': '603505', 'name': '金石资源', 'sector': '资源'},
+    {'code': '688568', 'name': '中科星图', 'sector': '商业航天'},
+    {'code': '600118', 'name': '中国卫星', 'sector': '商业航天'},
     {'code': '300750', 'name': '宁德时代', 'sector': '新能源'},
-    {'code': '002594', 'name': '比亚迪', 'sector': '新能源汽车'},
-    {'code': '601012', 'name': '隆基绿能', 'sector': '光伏'},
-    {'code': '600519', 'name': '贵州茅台', 'sector': '消费'},
-    {'code': '000858', 'name': '五粮液', 'sector': '消费'},
-    {'code': '601318', 'name': '中国平安', 'sector': '金融'},
-    {'code': '000333', 'name': '美的集团', 'sector': '家电'},
+    {'code': '002594', 'name': '比亚迪', 'sector': '新能源车'},
+    {'code': '688041', 'name': '海光信息', 'sector': 'AI算力'},
+    {'code': '688256', 'name': '寒武纪', 'sector': 'AI算力'},
+    {'code': '601727', 'name': '上海电气', 'sector': '电力设备'},
+    {'code': '600521', 'name': '华海药业', 'sector': '医药'},
+    {'code': '002475', 'name': '立讯精密', 'sector': '消费电子'},
+    {'code': '300760', 'name': '迈瑞医疗', 'sector': '医疗器械'},
+    {'code': '688277', 'name': '特宝生物', 'sector': '生物制药'},
+    {'code': '300124', 'name': '汇川技术', 'sector': '工业自动化'},
+    {'code': '002049', 'name': '紫光国微', 'sector': '芯片'},
+    {'code': '688330', 'name': '华大九天', 'sector': 'EDA软件'},
+    {'code': '688187', 'name': '时代电气', 'sector': '轨交设备'},
+    {'code': '600585', 'name': '海螺水泥', 'sector': '建材'},
 ]
 
 
