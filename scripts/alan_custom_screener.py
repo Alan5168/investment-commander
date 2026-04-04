@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-# 评分阈值：tier1≥88 / tier2≥75 / tier3≥60
-# 成交额过滤：≥1亿/日
-# 最优指标（5个）：price_down / ma5_gt_ma10 / close_gt_ma5 / close_above_ma20_pct / rsi_50_60_zone
-# 来源：遗传算法探索38代，composite_score=17.09，高区胜率25.9%
-# 更新时间：2026-03-31
 """
 Alan Li 定制化选股脚本 v2.1 - 统一数据源版
 
@@ -135,6 +130,94 @@ except ImportError:
     ZHUANGJIA_AVAILABLE = False
 
 # ============ 三档分类 ============
+
+
+# ============ 最优指标打分（来自遗传算法） ============
+
+def get_optimal_indicators() -> dict:
+    """加载遗传算法找到的最优指标权重（仅当跑赢基准时使用）"""
+    best_file = Path('/Users/alanli/.openclaw/workspace/skills/a-stock-monitor/config/best_indicators.json')
+    if best_file.exists():
+        data = json.loads(best_file.read_text())
+        if data.get('high_hit', 0) > 0.221:  # 跑赢基准才用
+            return data.get('indicators', {})
+    return {}  # 降级：返回空，用默认三档分类
+
+
+def classify_tier_with_optimal(df: pd.DataFrame) -> tuple:
+    """
+    用遗传算法最优指标组合打分，替代硬编码三档分类。
+    仅当最优指标存在且跑赢基准时启用，否则降级到 classify_tier。
+    """
+    optimal = get_optimal_indicators()
+
+    if not optimal:
+        # 降级到原有逻辑
+        return classify_tier(df)
+
+    if df is None or len(df) < 20:
+        return 0, '数据不足', '无法获取历史数据'
+
+    latest = df.iloc[-1]
+    # 成交额过滤（≥1亿/日）；成交额列单位=万元，1亿=10000万
+    turnover_wan = latest.get('成交额', 0)
+    if pd.isna(turnover_wan) or turnover_wan < 10000:
+        return 0, '不符合', f'成交额不足{turnover_wan:.0f}万'
+
+    close = latest['收盘']
+    ma5 = df['收盘'].rolling(5).mean().iloc[-1]
+    ma10 = df['收盘'].rolling(10).mean().iloc[-1]
+    ma20 = df['收盘'].rolling(20).mean().iloc[-1]
+    vol_ma5 = df['成交量'].rolling(5).mean().iloc[-1]
+    vol_ratio = latest['成交量'] / vol_ma5 if vol_ma5 > 0 else 1.0
+    change_pct = latest.get('涨跌幅', 0) if '涨跌幅' in latest.index else 0
+    if pd.isna(change_pct):
+        change_pct = 0
+
+    # 计算 RSI
+    if len(df) >= 17:
+        delta = df['收盘'].diff()
+        gain = delta.clip(lower=0).rolling(14).mean()
+        loss = (-delta.clip(upper=0)).rolling(14).mean()
+        rs = gain / loss.replace(0, float('nan'))
+        rsi = (100 - 100 / (1 + rs)).iloc[-1]
+    else:
+        rsi = 50
+
+    # 用最优权重打分（跳过 score_below_50：live 数据无法准确计算）
+    score = 50
+    for ind, weight in optimal.items():
+        if ind == 'score_below_50':
+            continue  # 跳过
+        elif ind == 'price_down' and change_pct < 0:
+            score += weight
+        elif ind == 'ma5_gt_ma10' and ma5 > ma10:
+            score += weight
+        elif ind == 'close_gt_ma5' and close > ma5:
+            score += weight
+        elif ind == 'close_above_ma20_pct' and (close - ma20) / ma20 > 0.02:
+            score += weight
+        elif ind == 'rsi_50_60_zone' and 50 <= rsi <= 60:
+            score += weight
+        elif ind == 'close_lt_ma20' and close < ma20:
+            score += weight
+        elif ind == 'rsi_below_50' and rsi < 50:
+            score += weight
+        elif ind == 'rsi_overbought' and rsi > 70:
+            score += weight
+        elif ind == 'vol_ratio_2x' and vol_ratio > 2.0:
+            score += weight
+
+    score = max(0, min(100, score))
+
+    if score >= 88:
+        return 1, '强势', f'最优指标评分{score:.0f}'
+    elif score >= 75:
+        return 2, '弱势修复', f'最优指标评分{score:.0f}'
+    elif score >= 60:
+        return 3, '观察池', f'最优指标评分{score:.0f}'
+    else:
+        return 0, '不符合', f'最优指标评分{score:.0f}'
 
 def classify_tier(df: pd.DataFrame) -> tuple:
     """
@@ -292,7 +375,7 @@ def screen_stock(stock_code: str, stock_name: str, zhuangjia_mode: bool = False)
         return None
 
     # 三档分类
-    tier, tier_name, reason = classify_tier(df)
+    tier, tier_name, reason = classify_tier_with_optimal(df)
     if tier == 0:
         return None
 
@@ -434,7 +517,7 @@ def screen_stock_with_data(stock_code: str, stock_name: str, df: pd.DataFrame, z
         return None
 
     # 三档分类
-    tier, tier_name, reason = classify_tier(df)
+    tier, tier_name, reason = classify_tier_with_optimal(df)
     if tier == 0:
         return None
 

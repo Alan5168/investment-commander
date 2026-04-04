@@ -1,0 +1,99 @@
+{
+  "themes": [
+    {
+      "name": "商业航天",
+      "milestone": "SpaceX IPO预期",
+      "timeline": "2026年内",
+      "status": "观察中",
+      "related_stocks": ["688568", "600118"]
+    },
+    {
+      "name": "固态变压器SST",
+      "milestone": "国内商业化落地",
+      "timeline": "2026-2027",
+      "status": "布局期",
+      "related_stocks": ["601126", "688676", "002479"]
+    },
+    {
+      "name": "AI算力",
+      "milestone": "英伟达GTC大会",
+      "timeline": "2026-03已过",
+      "status": "持续跟踪",
+      "related_stocks": ["688041", "688256"]
+    },
+    {
+      "name": "固态电池",
+      "milestone": "量产时间表",
+      "timeline": "2026-2027",
+      "status": "观察中",
+      "related_stocks": ["300750", "002594"]
+    },
+    {
+      "name": "人形机器人",
+      "milestone": "Tesla Optimus量产",
+      "timeline": "2027-2028",
+      "status": "观察中",
+      "related_stocks": ["002747", "688169"]
+    },
+    {
+      "name": "脑机接口",
+      "milestone": "2026前三月融资超去年全年",
+      "timeline": "2026加速落地",
+      "status": "重点跟踪",
+      "related_stocks": ["688158", "002604"],
+      "source": "last30days 2026-04-03"
+    },
+    {
+      "name": "低空经济/eVTOL",
+      "milestone": "政策密集催化",
+      "timeline": "2026年",
+      "status": "新兴布局",
+      "related_stocks": ["300583", "002616"],
+      "source": "last30days 2026-04-03",
+      "note": "需进一步验证纯正标的"
+    },
+    {
+      "name": "卫星互联网",
+      "milestone": "新基建主线",
+      "timeline": "2026持续",
+      "status": "观察中",
+      "related_stocks": ["002115", "688027"],
+      "source": "last30days 2026-04-03"
+    },
+    {
+      "name": "生物制造",
+      "milestone": "政策密集支持",
+      "timeline": "2026年",
+      "status": "布局期",
+      "related_stocks": ["688277", "300347"],
+      "source": "last30days 2026-04-03",
+      "note": "需进一步验证纯正标的"
+    },
+    {
+      "name": "量子计算",
+      "milestone": "前沿技术突破",
+      "timeline": "2026年",
+      "status": "观察中",
+      "related_stocks": ["688027"],
+      "source": "last30days 2026-04-03"
+    },
+    {
+      "name": "核聚变能",
+      "milestone": "商业化进程加速",
+      "timeline": "2026年",
+      "status": "早期布局",
+      "related_stocks": ["002534"],
+      "source": "last30days 2026-04-03",
+      "note": "纯正标的较少，谨慎筛选"
+    },
+    {
+      "name": "AI Agent/自主智能体",
+      "milestone": "大模型落地加速",
+      "timeline": "2026年",
+      "status": "新兴跟踪",
+      "related_stocks": ["688041", "300750"],
+      "source": "last30days 2026-04-03",
+      "note": "大部分优质标的在美股，A股以应用层为主"
+    }
+  ]
+}

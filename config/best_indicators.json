@@ -1,20 +1,24 @@
 {
-  "composite_score": 17.09,
-  "separation": 25.93,
-  "alpha": 3.83,
+  "composite_score": 19.31,
+  "separation": 28.15,
+  "alpha": 6.05,
   "indicators": {
-    "price_down": -9.513509323080065,
-    "score_below_50": -18.873585922118764,
-    "rsi_50_60_zone": 8.110126145954602,
-    "ma5_gt_ma10": 12.7776284333043,
-    "close_above_ma20_pct": 17.17489167969433,
-    "close_gt_ma5": 10.89468078106265
+    "close_lt_ma20": -13.995352067791313,
+    "ma5_gt_ma10": 12.8890181287369,
+    "rsi_below_50": -11.868392132995867,
+    "rsi_overbought": -14.852086947499938,
+    "vol_ratio_2x": 30
   },
-  "high_hit": 0.259,
+  "high_hit": 0,
   "low_hit": 0.0,
-  "pred_high_n": 1697,
-  "pred_low_n": 32,
+  "pred_high_n": 1041,
+  "pred_low_n": 31,
   "random_baseline": 0.221,
-  "updated_at": "2026-03-30T20:40:36.595002",
-  "generation": 4
+  "updated_at": "2026-04-04T00:07:42.659051",
+  "generation": 8,
+  "no_improve_count": 41,
+  "restart_from": null,
+  "note": "250代无改善后强重启，从头探索",
+  "high_win": 0.281,
+  "_notified_20": true
 }

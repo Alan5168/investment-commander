@@ -62,7 +62,10 @@ def select_final_3_from_scored(scored: list, industry_result: dict) -> list:
     """
     从已打分的产业股里选3只
     优先级：直接受益 > 间接受益，同级内按技术面评分排序
+    排除已持仓股票
     """
+    held = get_held_codes()
+    scored = [s for s in scored if s['code'] not in held]
     direct = set(industry_result['pool']['direct'])
 
     recommendations = []
@@ -95,6 +98,74 @@ def select_final_3_from_scored(scored: list, industry_result: dict) -> list:
                 })
 
     return recommendations[:3]
+
+
+def get_industry_highlight(code: str, catalyst: str = "") -> str:
+    """根据股票代码返回产业亮点描述（用于推荐报告）"""
+    # 持仓股优先标注产业逻辑
+    holdings_highlights = {
+        '688190': '云路先进材料 | SST纳米晶磁材龙头，受益于固态变压器产业化',
+        '603556': '海兴电力 | 电力设备出海龙头，海外订单持续增长',
+        '688677': '青岛海泰新光 | 医用内窥镜进口替代，景气度高',
+        '301268': '铭利达 | 汽车轻量化精密结构件，新能源车产业链',
+        '000818': '航锦科技 | 化工+GPU算力，双重产业逻辑',
+        '688116': '天奈科技 | 碳纳米管导电剂，新能源电池关键材料',
+        '603505': '金石资源 | 萤石资源龙头，氟化工上游',
+        '688262': '苏州国芯科技 | 国产嵌入式CPU，芯片自主可控',
+        '300101': '振芯科技 | 卫星导航核心元器件，商业航天直接受益',
+        '300567': '精测电子 | 半导体检测设备，国产替代空间大',
+        '600745': '闻泰科技 | 手机ODM+安世半导体，双主业',
+        '688332': '中科蓝讯 | AI物联网芯片，TWS耳机主芯片',
+        '301269': '华大九天 | 国产EDA软件，芯片设计必备工具',
+    }
+    if code in holdings_highlights:
+        return holdings_highlights[code]
+
+    # 重点关注股的产业亮点
+    highlights = {
+        # 半导体设备（国产替代）
+        '002371': '北方华创 | 半导体设备龙头，刻蚀+薄膜+清洗全覆盖，国产替代核心标的',
+        '688012': '中微公司 | 半导体刻蚀设备龙头，5nm先进制程受益',
+        '688072': '拓荆科技 | 半导体薄膜设备，国产替代加速',
+        '688120': '华海清科 | CMP设备龙头，晶圆平坦化核心',
+        '688082': '盛美上海 | 半导体清洗设备，技术领先',
+        '688037': '芯源微 | 半导体光刻胶涂胶显影，替代空间大',
+        # AI算力/GPU
+        '688041': '海光信息 | 国产GPU/AI芯片，算力自主可控',
+        '688256': '寒武纪 | AI芯片设计国内领先，受益于算力需求',
+        # 商业航天
+        '688568': '中科星图 | 卫星遥感数据，商业航天直接受益',
+        '600118': '中国卫星 | 卫星制造运营，商业航天核心标的',
+        # 新能源/电力设备
+        '300750': '宁德时代 | 锂电池全球龙头，储能+动力双轮驱动',
+        '002594': '比亚迪 | 新能源车+电池全球领先，产业链核心',
+        '601727': '上海电气 | 电力设备+储能，受益于算力用电需求',
+        # 固态电池/SST
+        '601126': '国内SST标准制定参与者 | 固态变压器商业化核心受益',
+        '688676': 'SST下游应用 | 电力设备智能化',
+        # 新材料
+        '688556': '新材料龙头 | 高端合金材料应用广泛',
+    }
+    return highlights.get(code, '技术面合格，产业逻辑待确认')
+
+
+
+def get_held_codes() -> set:
+    """从 portfolio.json 动态读取持仓代码，排除已持仓股票"""
+    portfolio_file = Path('/Users/alanli/.openclaw/workspace/data/portfolio.json')
+    if not portfolio_file.exists():
+        return set()
+    try:
+        portfolio = json.loads(portfolio_file.read_text())
+        codes = set()
+        for h in portfolio.get("holdings", []):
+            code = h.get("code", "").split(".")[0]
+            if code:
+                codes.add(code)
+        return codes
+    except:
+        return set()
+
 
 
 def get_stock_name(code: str) -> str:
@@ -137,13 +208,14 @@ def format_final_report(recommendations: list, catalyst: str,
         name = get_stock_name(r['code'])
         emoji = priority_emoji.get(r['priority'], '📌')
         signals_str = '; '.join(r['signals']) if r['signals'] else '无'
+        highlight = get_industry_highlight(r['code'], catalyst)
         lines.extend([
             f"### {emoji} {i}. {name}（{r['code']}）",
             f"",
-            f"- **推荐依据**：{r['industry_tag']} + 技术评分 {r['score']:.0f}分",
-            f"- **产业面**：{r['industry_tag']}",
-            f"- **技术面**：{r['quant_tag']}",
+            f"- **产业亮点**：{highlight}",
+            f"- **技术评分**：{r['score']:.0f}分 | {r['quant_tag']}",
             f"- **技术信号**：{signals_str}",
+            f"- **分类**：{r['industry_tag']}",
             f"",
         ])
 
