@@ -161,3 +161,58 @@ investment-commander/
 - 数据源：[AKShare](https://github.com/akfamily/akshare) · [Tushare](https://tushare.pro/)
 - 量化框架灵感：[TradingAgents](https://github.com/goldgeyser/TradingAgents)
 - A股监控基础：[JamesMei/a-stock-monitor](https://github.com/JamesMei/a-stock-monitor)
+
+---
+
+## ClawTeam 多 Agent 集成
+
+Investment Commander 支持通过 [ClawTeam](https://github.com/HKUDS/ClawTeam) 实现多 Agent 并行分析，大幅提升分析效率。
+
+### 安装 ClawTeam
+
+```bash
+pip install clawteam
+```
+
+### 启动投研团队
+
+```bash
+# 进入项目目录
+cd ~/workspace/skills/investment-commander
+
+# 启动团队（4个Agent并行分析）
+clawteam launch clawteam/investment-commander.toml \
+  --team my-invest \
+  --goal "分析今日市场，关注AI算力 固态变压器 商业航天"
+
+# 监控进度
+clawteam board show my-invest
+```
+
+### Agent 分工
+
+| Agent | 职责 | 使用脚本 |
+|-------|------|----------|
+| **commander**（Leader） | 汇总决策，输出3只推荐 | `commander_final.py` |
+| **industry-analyst** | 产业催化剂分析 | `industry_analyst.py` |
+| **quant-analyst** | 量化技术面筛选 | `alan_custom_screener.py` |
+| **risk-validator** | 大盘风控判断 | `market_filter.py` + `us_market_signal.py` |
+| **news-analyst** | 热点题材追踪 | `hot_sector_tracker.py` |
+
+### 使用不同的 OpenClaw Agent
+
+通过 `--profile` 指定不同模型：
+
+```bash
+# 用 MiniMax 做 Leader（综合决策）
+clawteam launch clawteam/investment-commander.toml \
+  --team my-invest \
+  --goal "分析AI算力赛道" \
+  --profile minimax
+```
+
+### ClawTeam PR
+
+本模板已提交至 HKUDS/ClawTeam 主项目：
+- PR #121: https://github.com/HKUDS/ClawTeam/pull/121
+
