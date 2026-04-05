@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 战绩追踪器 - performance_tracker.py
-版本: 1.1.0
+版本: 1.2.0
 作者: Alan Li
 日期: 2026-04-05
 
@@ -19,7 +19,6 @@ import json
 import os
 import re
 import sys
-import glob
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -28,26 +27,24 @@ WORKSPACE = Path.home() / ".openclaw" / "workspace"
 SKILL_DIR = WORKSPACE / "skills" / "a-stock-monitor"
 DATA_DIR = Path(__file__).parent.parent / "data" / "performance"
 REC_DIR = SKILL_DIR / "output" / "recommendations"
+SHARED_DIR = WORKSPACE / "shared"
 
 # 确保目录存在
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-
-def get_tushare_token():
-    """获取 Tushare token"""
-    token = os.environ.get("TUSHARE_TOKEN", "")
-    if token:
-        return token
-    token_file = Path.home() / ".tushare_token"
-    if token_file.exists():
-        return token_file.read_text().strip()
-    return ""
+# 导入 Tushare 数据客户端
+sys.path.insert(0, str(SHARED_DIR))
+try:
+    from stock_client import get_daily
+    HAS_STOCK_CLIENT = True
+except ImportError:
+    HAS_STOCK_CLIENT = False
+    print("[警告] 未找到 stock_client，将使用备用方案")
 
 
 def send_telegram_notification(message: str):
     """通过 OpenClaw Telegram session 推送"""
     import subprocess
-    # 构造 markdown 格式消息
     cmd = [
         'openclaw', 'message', 'send',
         '--channel', 'telegram',
@@ -60,37 +57,73 @@ def send_telegram_notification(message: str):
         print(f"[通知] Telegram 推送失败: {e}")
 
 
-def fetch_price_data_sina_fallback(stock_code: str, trade_date: str):
-    """用新浪接口获取单日收盘价"""
+def get_stock_returns(stock_code: str, recommend_date: str) -> dict:
+    """
+    获取推荐后3/5/10日真实收益
+    用 stock_client.get_daily（Tushare主力，AKShare降级）
+    """
+    if not HAS_STOCK_CLIENT:
+        return {'error': 'stock_client 不可用'}
+
     try:
-        import requests as req
-        symbol = f"sh{stock_code}" if stock_code.startswith(("6", "0")) and len(stock_code) == 6 else f"sz{stock_code}"
-        url = f"https://hq.sinajs.cn/list={symbol}"
-        headers = {"Referer": "https://finance.sina.com.cn", "User-Agent": "Mozilla/5.0"}
-        resp = req.get(url, headers=headers, timeout=5)
-        if resp.status_code == 200:
-            content = resp.text
-            match = re.search(r'"([^"]+)"', content)
-            if match:
-                parts = match.group(1).split(",")
-                if len(parts) > 3:
-                    return {"price": float(parts[3]), "date": trade_date}
-    except Exception:
-        pass
-    return None
+        # 拉推荐日期后20个交易日的数据
+        df = get_daily(
+            stock_code,
+            start_date=recommend_date.replace('-', ''),
+            days=30
+        )
 
+        if df is None or len(df) < 2:
+            return {'error': '数据不足'}
 
-def fetch_recent_prices(stock_code: str, start_date: str, count: int = 15):
-    """获取股票近 count 天的价格数据"""
-    prices = []
-    today = datetime.now()
-    for i in range(1, count + 1):
-        d = today - timedelta(days=i)
-        trade_date = d.strftime("%Y%m%d")
-        data = fetch_price_data_sina_fallback(stock_code, trade_date)
-        if data:
-            prices.append(data)
-    return prices
+        df = df.sort_values('日期').reset_index(drop=True)
+        entry_price = df.iloc[0]['收盘']  # 推荐日收盘价作为基准
+
+        def get_return(n_days):
+            if len(df) > n_days:
+                return round(
+                    (df.iloc[n_days]['收盘'] - entry_price) / entry_price, 4
+                )
+            return None
+
+        returns = {
+            'entry_price': round(entry_price, 2),
+            'return_3d': get_return(3),
+            'return_5d': get_return(5),
+            'return_10d': get_return(10),
+        }
+
+        # 计算最大回撤（前10日）
+        if len(df) >= 10:
+            prices = df.iloc[:11]['收盘'].values
+            peak = prices[0]
+            max_dd = 0
+            for p in prices:
+                if p > peak:
+                    peak = p
+                dd = (peak - p) / peak
+                if dd > max_dd:
+                    max_dd = dd
+            returns['max_drawdown'] = round(-max_dd, 4)
+        else:
+            returns['max_drawdown'] = 0.0
+
+        # 判断结果
+        r5 = returns.get('return_5d', 0) or 0
+        r10 = returns.get('return_10d', 0) or 0
+        dd = returns.get('max_drawdown', 0) or 0
+
+        if max(r5, r10) >= 0.05:
+            returns['result'] = 'win'
+        elif dd <= -0.05 or min(r5, r10) <= -0.05:
+            returns['result'] = 'fail'
+        else:
+            returns['result'] = 'neutral'
+
+        return returns
+
+    except Exception as e:
+        return {'error': str(e)}
 
 
 def parse_recommendation_file(file_path: Path):
@@ -100,7 +133,7 @@ def parse_recommendation_file(file_path: Path):
         content = file_path.read_text(encoding="utf-8")
         # 提取日期
         date_m = re.search(r'\*\*时间\*\*[：:]?\s*(\d{4}-\d{2}-\d{2})', content)
-        rec_date = date_m.group(1).replace("-", "") if date_m else file_path.stem[:8]
+        rec_date = date_m.group(1) if date_m else file_path.stem[:10]
 
         # 提取所有 6 位股票代码
         all_codes = re.findall(r'\b([68]\d{5})\b', content)
@@ -169,10 +202,7 @@ def get_historical_recommendations() -> list:
 
 
 def get_recommendations_for_date(target_date: str = None) -> list:
-    """
-    获取指定日期的推荐记录
-    优先从推荐文件解析，其次用冷启动逻辑
-    """
+    """获取指定日期的推荐记录"""
     if target_date is None:
         target_date = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
 
@@ -189,56 +219,10 @@ def get_recommendations_for_date(target_date: str = None) -> list:
     # 冷启动：从所有历史文件扫描
     print(f"[战绩追踪] 未找到 {target_date} 的推荐文件，尝试冷启动...")
     all_recs = get_historical_recommendations()
-
-    # 过滤出目标日期的记录
-    filtered = [r for r in all_recs if r.get("recommend_date") == target_date]
+    filtered = [r for r in all_recs if r.get("recommend_date", "").replace("-", "") == target_date]
     if filtered:
         print(f"[战绩追踪] 冷启动找到 {len(filtered)} 条目标日期推荐")
     return filtered
-
-
-def calculate_returns(prices: list, entry_price: float, stop_loss: float = None):
-    """计算收益率序列和最大回撤"""
-    if not prices or entry_price <= 0:
-        return {"return_3d": 0, "return_5d": 0, "return_10d": 0, "max_drawdown": 0}
-
-    returns = []
-    for p in prices:
-        ret = (p["price"] - entry_price) / entry_price
-        returns.append(ret)
-
-    result = {
-        "return_3d": round(returns[min(2, len(returns)-1)], 4) if len(returns) >= 3 else 0,
-        "return_5d": round(returns[min(4, len(returns)-1)], 4) if len(returns) >= 5 else 0,
-        "return_10d": round(returns[min(9, len(returns)-1)], 4) if len(returns) >= 10 else (returns[-1] if returns else 0),
-        "max_drawdown": round(min(returns) if returns else 0, 4),
-    }
-
-    if stop_loss and entry_price > 0:
-        hit_stop = any(p["price"] <= stop_loss for p in prices)
-        if hit_stop:
-            result["stop_loss_hit"] = True
-
-    return result
-
-
-def determine_result(returns_data: dict, stop_loss: float = None) -> str:
-    """
-    判定结果：
-    - win: 10天内最高收益 > 5%
-    - fail: 10天内最大回撤 > 5% 或触发止损
-    - neutral: 其余
-    """
-    max_return = returns_data.get("return_10d", 0)
-    max_drawdown = abs(returns_data.get("max_drawdown", 0))
-
-    if returns_data.get("stop_loss_hit"):
-        return "fail"
-    if max_return > 0.05:
-        return "win"
-    if max_drawdown > 0.05:
-        return "fail"
-    return "neutral"
 
 
 def track_performance(target_date: str = None, cold_start: bool = False):
@@ -251,7 +235,6 @@ def track_performance(target_date: str = None, cold_start: bool = False):
     # 1. 提取推荐记录
     if cold_start:
         recommendations = get_historical_recommendations()
-        # 过滤有代码的记录
         recommendations = [r for r in recommendations if r.get("stock_code")]
         print(f"[冷启动] 共提取 {len(recommendations)} 条历史推荐")
     else:
@@ -265,37 +248,50 @@ def track_performance(target_date: str = None, cold_start: bool = False):
     results = []
     for rec in recommendations:
         code = rec["stock_code"]
-        entry = rec.get("entry_price", 0)
-        stop = rec.get("stop_loss", 0)
+        rec_date = rec.get("recommend_date", "")
 
-        if entry <= 0:
-            entry = 20.0  # 默认入场价
+        print(f"  查询 {code} {rec.get('stock_name', '')} 从 {rec_date} 开始...")
 
-        prices = fetch_recent_prices(code, target_date, count=15)
-        if prices:
-            entry = prices[0]["price"] if entry <= 0 else entry
+        # 用 Tushare 获取真实收益
+        returns_data = get_stock_returns(code, rec_date)
 
-        returns_data = calculate_returns(prices, entry, stop)
-        result_status = determine_result(returns_data, stop)
+        # Convert numpy types to native Python for JSON serialization
+        for k, v in returns_data.items():
+            if hasattr(v, 'item'):  # numpy scalar
+                returns_data[k] = v.item()
+            elif hasattr(v, 'tolist'):  # numpy array
+                returns_data[k] = float(v)
+
+        if 'error' in returns_data:
+            print(f"    ⚠️ 数据获取失败: {returns_data['error']}")
+            # 跳过无法获取数据的股票
+            continue
+
+        result_status = returns_data.get('result', 'neutral')
 
         record = {
-            "recommend_date": rec.get("recommend_date", target_date),
+            "recommend_date": rec_date.replace('-', ''),
             "stock_code": code,
             "stock_name": rec.get("stock_name", ""),
             "recommend_reason": rec.get("recommend_reason", ""),
-            "entry_price": entry,
-            "stop_loss": stop,
+            "entry_price": returns_data.get("entry_price", 0),
+            "stop_loss": rec.get("stop_loss", 0),
             "industry_score": rec.get("industry_score", 0),
             "quant_score": rec.get("quant_score", 0),
-            **returns_data,
+            "return_3d": returns_data.get("return_3d"),
+            "return_5d": returns_data.get("return_5d"),
+            "return_10d": returns_data.get("return_10d"),
+            "max_drawdown": returns_data.get("max_drawdown", 0),
             "result": result_status,
             "tracked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         results.append(record)
-        print(f"  {code} {rec.get('stock_name', '')}: {result_status} "
-              f"(3日{returns_data.get('return_3d', 0):.2%} "
-              f"5日{returns_data.get('return_5d', 0):.2%} "
-              f"10日{returns_data.get('return_10d', 0):.2%})")
+        print(f"    入场价:{returns_data.get('entry_price')} "
+              f"3日:{(returns_data.get('return_3d') or 0):.2%} "
+              f"5日:{(returns_data.get('return_5d') or 0):.2%} "
+              f"10日:{(returns_data.get('return_10d') or 0):.2%} "
+              f"回撤:{(returns_data.get('max_drawdown') or 0):.2%} "
+              f"→ {result_status}")
 
     # 3. 写入 jsonl 文件
     output_file = DATA_DIR / f"{target_date}.jsonl"
@@ -328,6 +324,15 @@ if __name__ == "__main__":
     for arg in sys.argv[1:]:
         if arg.isdigit() and len(arg) == 8:
             target = arg
+
+    # 先测试 get_stock_returns
+    print("=" * 50)
+    print("测试 get_stock_returns")
+    print("=" * 50)
+    test_result = get_stock_returns('688190', '2026-03-28')
+    print(f"688190 从 2026-03-28 开始: {test_result}")
+    print()
+
     results = track_performance(target, cold_start=cold)
     print(f"\n共追踪 {len(results)} 只股票")
     for r in results:
