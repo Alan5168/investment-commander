@@ -44,7 +44,7 @@ def send_telegram_notification(message: str):
         'openclaw', 'message', 'send',
         '--channel', 'telegram',
         '--target', '8710019510',
-        message
+        '--message', message
     ]
     try:
         subprocess.run(cmd, capture_output=True, timeout=15)
